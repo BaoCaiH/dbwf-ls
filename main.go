@@ -79,9 +79,22 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 		}
 
 		// Hover response
-		response := state.Hover(request.ID, request.Params.TextDocument.URI, request.Params.Position)
+		response, err := state.Hover(request.ID, request.Params.TextDocument.URI, request.Params.Position, logger)
+		if err != nil {
+			writeResponse(writer, lsp.ErrorResponse{
+				Response: lsp.Response{
+					RPC: "2.0",
+					ID:  &request.ID,
+				},
+				Error: error.ResponseError{
+					Code:    error.InternalError,
+					Message: fmt.Sprintf("Internal error: %s\n", err),
+				},
+			})
+		} else {
+			writeResponse(writer, response)
+		}
 
-		writeResponse(writer, response)
 		logger.Print("Hover response sent")
 	case "textDocument/definition":
 		var request lsp.DefinitionRequest

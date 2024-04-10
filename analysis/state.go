@@ -24,8 +24,40 @@ func (s *State) UpdateDocument(uri, text string) {
 	s.Documents[uri] = text
 }
 
-func (s *State) Hover(id int, uri string, position lsp.Position) lsp.HoverResponse {
+func wordAtCursor(line string, position lsp.Position, re *regexp.Regexp) string {
+	if loc := re.FindStringIndex(line[position.Character : position.Character+1]); loc != nil {
+		return ""
+	}
+
+	start, end := 0, 0
+	if locs := re.FindAllStringIndex(line, -1); locs != nil {
+		for _, loc := range locs {
+			if loc[0] > position.Character {
+				end = loc[0]
+			}
+			if loc[1] <= position.Character {
+				start = loc[1]
+			}
+			if end != 0 {
+				break
+			}
+		}
+	}
+
+	return line[start:end]
+}
+
+func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Logger) (lsp.HoverResponse, error) {
 	document := s.Documents[uri]
+
+	line := strings.Split(document, "\n")[position.Line]
+	re, err := regexp.Compile("\\W")
+	if err != nil {
+		logger.Printf("Hover Regexp Compile %s", err)
+		return lsp.HoverResponse{}, err
+	}
+
+	word := wordAtCursor(line, position, re)
 
 	// Hover response
 	response := lsp.HoverResponse{
@@ -34,11 +66,11 @@ func (s *State) Hover(id int, uri string, position lsp.Position) lsp.HoverRespon
 			ID:  &id,
 		},
 		Result: lsp.HoverResult{
-			Contents: fmt.Sprintf("File %s, Chars: %d", uri, len(document)),
+			Contents: fmt.Sprintf("Word at cursor: %s", word),
 		},
 	}
 
-	return response
+	return response, nil
 }
 
 func (s *State) Definition(id int, uri string, position lsp.Position) lsp.DefinitionResponse {
@@ -105,7 +137,7 @@ func (s *State) CodeAction(id int, uri string, logger *log.Logger) (lsp.CodeActi
 func (s *State) DocumentFormatting(id int, uri string, opts lsp.FormattingOptions, logger *log.Logger) (lsp.DocumentFormattingResponse, error) {
 	document := s.Documents[uri]
 
-	// Note: No need to do tabs for yaml, apparently, but I wrote it so I'm keeping it
+	// Note: No need to do tabs for yaml, apparently. But I wrote it so I'm keeping it
 	// tabs := strings.Repeat(" ", opts.TabSize*2)
 	trimTrailingWhitespace, trimFinalNewlines := true, true
 	// insertSpace, trimTrailingWhitespace, trimFinalNewlines := true, true, true
