@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"dbwf-ls/lsp"
-	"fmt"
 	"log"
 	"regexp"
 	"strings"
@@ -24,9 +23,22 @@ func (s *State) UpdateDocument(uri, text string) {
 	s.Documents[uri] = text
 }
 
-func wordAtCursor(line string, position lsp.Position, re *regexp.Regexp) string {
-	if loc := re.FindStringIndex(line[position.Character : position.Character+1]); loc != nil {
-		return ""
+func wordAtCursor(line string, position lsp.Position, logger *log.Logger) (string, error) {
+	re, err := regexp.Compile("\\W")
+	if err != nil {
+		logger.Printf("Regexp Compile %s", err)
+		return "", err
+	}
+
+	// Because the flocking cursor is 1 step ahead of the line while typing
+	// So this can fail, quietly, damn.
+	char := position.Character
+	if char == len(line) {
+		char--
+	}
+
+	if loc := re.FindStringIndex(line[char : char+1]); loc != nil {
+		return "", nil
 	}
 
 	start, end := 0, 0
@@ -43,21 +55,22 @@ func wordAtCursor(line string, position lsp.Position, re *regexp.Regexp) string 
 			}
 		}
 	}
+	if end == 0 {
+		end = len(line)
+	}
 
-	return line[start:end]
+	return line[start:end], nil
 }
 
 func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Logger) (lsp.HoverResponse, error) {
 	document := s.Documents[uri]
 
 	line := strings.Split(document, "\n")[position.Line]
-	re, err := regexp.Compile("\\W")
+
+	word, err := wordAtCursor(line, position, logger)
 	if err != nil {
-		logger.Printf("Hover Regexp Compile %s", err)
 		return lsp.HoverResponse{}, err
 	}
-
-	word := wordAtCursor(line, position, re)
 
 	// Hover response
 	response := lsp.HoverResponse{
@@ -66,7 +79,7 @@ func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Log
 			ID:  &id,
 		},
 		Result: lsp.HoverResult{
-			Contents: fmt.Sprintf("Word at cursor: %s", word),
+			Contents: word,
 		},
 	}
 
@@ -122,7 +135,7 @@ func (s *State) CodeAction(id int, uri string, logger *log.Logger) (lsp.CodeActi
 
 	}
 
-	// Definition response
+	// Code Action response
 	response := lsp.CodeActionResponse{
 		Response: lsp.Response{
 			RPC: "2.0",
@@ -208,13 +221,46 @@ func (s *State) DocumentFormatting(id int, uri string, opts lsp.FormattingOption
 		// }
 	}
 
-	// Definition response
+	// Formatting response
 	response := lsp.DocumentFormattingResponse{
 		Response: lsp.Response{
 			RPC: "2.0",
 			ID:  &id,
 		},
 		Result: edits,
+	}
+
+	return response, nil
+}
+
+func (s *State) Completion(id int, uri string, position lsp.Position, logger *log.Logger) (lsp.CompletionResponse, error) {
+	document := s.Documents[uri]
+
+	items := []lsp.CompletionItem{}
+	line := strings.Split(document, "\n")[position.Line]
+	logger.Print(line, position)
+	word, err := wordAtCursor(line, position, logger)
+	logger.Print(word)
+	if err != nil {
+		return lsp.CompletionResponse{}, err
+	}
+	logger.Print(word)
+	items = append(items, lsp.CompletionItem{
+		Label:         word,
+		Detail:        "Current typing word",
+		Documentation: "Nothing to document here",
+	})
+
+	// Completion response
+	response := lsp.CompletionResponse{
+		Response: lsp.Response{
+			RPC: "2.0",
+			ID:  &id,
+		},
+		Result: lsp.CompletionList{
+			IsIncomplete: true,
+			Items:        items,
+		},
 	}
 
 	return response, nil

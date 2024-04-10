@@ -115,7 +115,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			return
 		}
 
-		// Definition response
+		// CodeAction response
 		response, err := state.CodeAction(request.ID, request.Params.TextDocument.URI, logger)
 		if err != nil {
 			writeResponse(writer, lsp.ErrorResponse{
@@ -139,7 +139,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			return
 		}
 
-		// Definition response
+		// Formatting response
 		response, err := state.DocumentFormatting(request.ID, request.Params.TextDocument.URI, request.Params.Options, logger)
 
 		if err != nil {
@@ -157,6 +157,31 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			writeResponse(writer, response)
 		}
 		logger.Print("Formatting response sent")
+	case "textDocument/completion":
+		var request lsp.CompletionRequest
+		if err := json.Unmarshal(contents, &request); err != nil {
+			logger.Printf("textDocument/completion %s", err)
+			return
+		}
+
+		// Completion response
+		response, err := state.Completion(request.ID, request.Params.TextDocument.URI, request.Params.Position, logger)
+
+		if err != nil {
+			writeResponse(writer, lsp.ErrorResponse{
+				Response: lsp.Response{
+					RPC: "2.0",
+					ID:  &request.ID,
+				},
+				Error: error.ResponseError{
+					Code:    error.InternalError,
+					Message: fmt.Sprintf("Internal error: %s", err),
+				},
+			})
+		} else {
+			writeResponse(writer, response)
+		}
+		logger.Print("Completion response sent")
 
 	}
 }

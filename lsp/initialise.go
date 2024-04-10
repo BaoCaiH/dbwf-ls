@@ -25,12 +25,12 @@ type InitialiseResult struct {
 }
 
 type ServerCapabilities struct {
-	TextDocumentSync           int  `json:"textDocumentSync"`
-	HoverProvider              bool `json:"hoverProvider"`
-	DefinitionProvider         bool `json:"definitionProvider"`
-	CodeActionProvider         bool `json:"codeActionProvider"`
-	CompletionProvider         bool `json:"completionProvider"`
-	DocumentFormattingProvider bool `json:"documentFormattingProvider"`
+	TextDocumentSync           int            `json:"textDocumentSync"`
+	HoverProvider              bool           `json:"hoverProvider"`
+	DefinitionProvider         bool           `json:"definitionProvider"`
+	CodeActionProvider         bool           `json:"codeActionProvider"`
+	CompletionProvider         map[string]any `json:"completionProvider"`
+	DocumentFormattingProvider bool           `json:"documentFormattingProvider"`
 }
 type ServerInfo struct {
 	Name    string `json:"name"`
@@ -50,6 +50,7 @@ func NewInitialiseResponse(id int) InitialiseResponse {
 				HoverProvider:              true,
 				DefinitionProvider:         true,
 				CodeActionProvider:         true,
+				CompletionProvider:         map[string]any{},
 				DocumentFormattingProvider: true,
 			},
 			ServerInfo: ServerInfo{
