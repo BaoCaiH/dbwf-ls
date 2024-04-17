@@ -26,7 +26,7 @@ func main() {
 		msg := sc.Bytes()
 		method, contents, err := jsonrpc.DecodeMessage(msg)
 		if err != nil {
-			logger.Printf("Some errors occurred: s%", err)
+			logger.Printf("Some errors occurred: %s", err)
 			continue
 		}
 		handleMessage(logger, writer, state, method, contents)
@@ -57,18 +57,9 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			logger.Printf("textDocument/didOpen %s", err)
 			return
 		}
-		diagnostics := state.OpenDocument(noti.Params.TextDocument.URI, noti.Params.TextDocument.Text)
+		notification := state.OpenDocument(noti.Params.TextDocument.URI, noti.Params.TextDocument.Text)
 		logger.Printf("Editing %s", noti.Params.TextDocument.URI)
-		writeResponse(writer, lsp.PublishDiagnosticsNotification{
-			Notification: lsp.Notification{
-				RPC:    "2.0",
-				Method: "textDocument/publishDiagnostics",
-			},
-			Params: lsp.PublishDiagnosticsParams{
-				URI:         noti.Params.TextDocument.URI,
-				Diagnostics: diagnostics,
-			},
-		})
+		writeResponse(writer, notification)
 		logger.Print("Diagnostics sent")
 	case "textDocument/didChange":
 		var noti lsp.DidChangeTextNotification
@@ -77,22 +68,13 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			return
 		}
 
-		diagnostics := []lsp.Diagnostics{}
+		notification := lsp.PublishDiagnosticsNotification{}
 
 		for _, change := range noti.Params.ContentChanges {
-			diagnostics = state.UpdateDocument(noti.Params.TextDocument.URI, change.Text)
+			notification = state.UpdateDocument(noti.Params.TextDocument.URI, change.Text)
 		}
 		logger.Printf("Updated %s", noti.Params.TextDocument.URI)
-		writeResponse(writer, lsp.PublishDiagnosticsNotification{
-			Notification: lsp.Notification{
-				RPC:    "2.0",
-				Method: "textDocument/publishDiagnostics",
-			},
-			Params: lsp.PublishDiagnosticsParams{
-				URI:         noti.Params.TextDocument.URI,
-				Diagnostics: diagnostics,
-			},
-		})
+		writeResponse(writer, notification)
 
 		logger.Print("Diagnostics sent")
 	case "textDocument/hover":

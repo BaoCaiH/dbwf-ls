@@ -15,80 +15,38 @@ func NewState() State {
 	return State{Documents: map[string]string{}}
 }
 
-func diagnose(document string) []lsp.Diagnostics {
-	diagnostics := []lsp.Diagnostics{}
-	foundHealth := false
-	for _, line := range strings.Split(document, "\n") {
-		matched, err := regexp.MatchString("^health:\\s*?/??/??.*?$", line)
-		if err != nil {
-			return diagnostics
-		}
-		if matched {
-			foundHealth = true
-		}
-	}
-
-	if !foundHealth {
-		diagnostics = append(diagnostics, lsp.Diagnostics{
-			Range:    lsp.LineRange(0, 0, 0),
-			Severity: 2,
-			Source:   "dbwf-ls",
-			Message:  "Please consider adding `health` check to workflows.",
-		})
-	}
-
-	return diagnostics
-}
-
-func (s *State) OpenDocument(uri, text string) []lsp.Diagnostics {
+func (s *State) OpenDocument(uri, text string) lsp.PublishDiagnosticsNotification {
 	s.Documents[uri] = text
 
-	return diagnose(s.Documents[uri])
+	diagnostics := diagnose(s.Documents[uri])
+
+	return lsp.PublishDiagnosticsNotification{
+		Notification: lsp.Notification{
+			RPC:    "2.0",
+			Method: "textDocument/publishDiagnostics",
+		},
+		Params: lsp.PublishDiagnosticsParams{
+			URI:         uri,
+			Diagnostics: diagnostics,
+		},
+	}
 }
 
-func (s *State) UpdateDocument(uri, text string) []lsp.Diagnostics {
+func (s *State) UpdateDocument(uri, text string) lsp.PublishDiagnosticsNotification {
 	s.Documents[uri] = text
 
-	return diagnose(s.Documents[uri])
-}
+	diagnostics := diagnose(s.Documents[uri])
 
-func wordAtCursor(line string, position lsp.Position, logger *log.Logger) (string, error) {
-	re, err := regexp.Compile("\\W")
-	if err != nil {
-		logger.Printf("Regexp Compile %s", err)
-		return "", err
+	return lsp.PublishDiagnosticsNotification{
+		Notification: lsp.Notification{
+			RPC:    "2.0",
+			Method: "textDocument/publishDiagnostics",
+		},
+		Params: lsp.PublishDiagnosticsParams{
+			URI:         uri,
+			Diagnostics: diagnostics,
+		},
 	}
-
-	// Because the flocking cursor is 1 step ahead of the line while typing
-	// So this can fail, quietly, damn.
-	char := position.Character
-	if char == len(line) {
-		char--
-	}
-
-	if loc := re.FindStringIndex(line[char : char+1]); loc != nil {
-		return "", nil
-	}
-
-	start, end := 0, 0
-	if locs := re.FindAllStringIndex(line, -1); locs != nil {
-		for _, loc := range locs {
-			if loc[0] > position.Character {
-				end = loc[0]
-			}
-			if loc[1] <= position.Character {
-				start = loc[1]
-			}
-			if end != 0 {
-				break
-			}
-		}
-	}
-	if end == 0 {
-		end = len(line)
-	}
-
-	return line[start:end], nil
 }
 
 func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Logger) (lsp.HoverResponse, error) {
@@ -159,9 +117,7 @@ func (s *State) CodeAction(id int, uri string, logger *log.Logger) (lsp.CodeActi
 				Title: "Remove trailing whitespaces",
 				Edit:  &lsp.WorkspaceEdit{Changes: dropTrailingWhitespacesEdit},
 			})
-
 		}
-
 	}
 
 	// Code Action response
