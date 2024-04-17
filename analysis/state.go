@@ -15,12 +15,41 @@ func NewState() State {
 	return State{Documents: map[string]string{}}
 }
 
-func (s *State) OpenDocument(uri, text string) {
-	s.Documents[uri] = text
+func diagnose(document string) []lsp.Diagnostics {
+	diagnostics := []lsp.Diagnostics{}
+	foundHealth := false
+	for _, line := range strings.Split(document, "\n") {
+		matched, err := regexp.MatchString("^health:\\s*?/??/??.*?$", line)
+		if err != nil {
+			return diagnostics
+		}
+		if matched {
+			foundHealth = true
+		}
+	}
+
+	if !foundHealth {
+		diagnostics = append(diagnostics, lsp.Diagnostics{
+			Range:    lsp.LineRange(0, 0, 0),
+			Severity: 2,
+			Source:   "dbwf-ls",
+			Message:  "Please consider adding `health` check to workflows.",
+		})
+	}
+
+	return diagnostics
 }
 
-func (s *State) UpdateDocument(uri, text string) {
+func (s *State) OpenDocument(uri, text string) []lsp.Diagnostics {
 	s.Documents[uri] = text
+
+	return diagnose(s.Documents[uri])
+}
+
+func (s *State) UpdateDocument(uri, text string) []lsp.Diagnostics {
+	s.Documents[uri] = text
+
+	return diagnose(s.Documents[uri])
 }
 
 func wordAtCursor(line string, position lsp.Position, logger *log.Logger) (string, error) {

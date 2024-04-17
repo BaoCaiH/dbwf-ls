@@ -57,8 +57,19 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			logger.Printf("textDocument/didOpen %s", err)
 			return
 		}
-		state.OpenDocument(noti.Params.TextDocument.URI, noti.Params.TextDocument.Text)
+		diagnostics := state.OpenDocument(noti.Params.TextDocument.URI, noti.Params.TextDocument.Text)
 		logger.Printf("Editing %s", noti.Params.TextDocument.URI)
+		writeResponse(writer, lsp.PublishDiagnosticsNotification{
+			Notification: lsp.Notification{
+				RPC:    "2.0",
+				Method: "textDocument/publishDiagnostics",
+			},
+			Params: lsp.PublishDiagnosticsParams{
+				URI:         noti.Params.TextDocument.URI,
+				Diagnostics: diagnostics,
+			},
+		})
+		logger.Print("Diagnostics sent")
 	case "textDocument/didChange":
 		var noti lsp.DidChangeTextNotification
 		if err := json.Unmarshal(contents, &noti); err != nil {
@@ -66,11 +77,24 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			return
 		}
 
-		for _, change := range noti.Params.ContentChanges {
-			state.UpdateDocument(noti.Params.TextDocument.URI, change.Text)
-		}
+		diagnostics := []lsp.Diagnostics{}
 
+		for _, change := range noti.Params.ContentChanges {
+			diagnostics = state.UpdateDocument(noti.Params.TextDocument.URI, change.Text)
+		}
 		logger.Printf("Updated %s", noti.Params.TextDocument.URI)
+		writeResponse(writer, lsp.PublishDiagnosticsNotification{
+			Notification: lsp.Notification{
+				RPC:    "2.0",
+				Method: "textDocument/publishDiagnostics",
+			},
+			Params: lsp.PublishDiagnosticsParams{
+				URI:         noti.Params.TextDocument.URI,
+				Diagnostics: diagnostics,
+			},
+		})
+
+		logger.Print("Diagnostics sent")
 	case "textDocument/hover":
 		var request lsp.HoverRequest
 		if err := json.Unmarshal(contents, &request); err != nil {
