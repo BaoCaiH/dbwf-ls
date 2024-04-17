@@ -3,6 +3,7 @@ package analysis
 import (
 	"dbwf-ls/lsp"
 	"fmt"
+	"strings"
 )
 
 //	lsp.CompletionItem{
@@ -60,14 +61,14 @@ var Keywords = map[string]Keyword{
 	"description": {
 		completions: []Completion{
 			{
-				insertText: fmt.Sprintf("%s\n", "description: \"Workflow description\""),
+				insertText: fmt.Sprintf("%s\n", "description: \"Meaningful description\""),
 				kind:       lsp.CompletionItemKind["Snippet"],
 				detail:     "description declaration",
 				documentation: lsp.MarkupContent{
 					Kind: "markdown",
 					Value: fmt.Sprintf("---\n%s\n\n%s\n",
 						"Snippet for description declaration",
-						"description: \"Workflow description\"",
+						"description: \"Meaningful description\"",
 					),
 				},
 			},
@@ -370,13 +371,13 @@ var Keywords = map[string]Keyword{
 			{
 				insertText: fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 					"job_cluster_key: \"job_cluster\"",
-					"    new_cluster:",
-					"      autoscale:",
-					"        min_workers: 5",
-					"        max_workers: 15",
-					"      spark_conf:",
-					"        spark.sql.shuffle.partitions: \"auto\"",
-					"      runtime_engine: \"PHOTON\"",
+					"new_cluster:",
+					"  autoscale:",
+					"    min_workers: 5",
+					"    max_workers: 15",
+					"  spark_conf:",
+					"    spark.sql.shuffle.partitions: \"auto\"",
+					"  runtime_engine: \"PHOTON\"",
 				),
 				kind:   lsp.CompletionItemKind["Snippet"],
 				detail: "job clusters key (new, suggested settings)",
@@ -385,13 +386,13 @@ var Keywords = map[string]Keyword{
 					Value: fmt.Sprintf("---\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 						"Snippet for declaring new job clusters",
 						"job_cluster_key: \"job_cluster\"",
-						"    new_cluster:",
-						"      autoscale:",
-						"        min_workers: 5",
-						"        max_workers: 15",
-						"      spark_conf:",
-						"        spark.sql.shuffle.partitions: \"auto\"",
-						"      runtime_engine: \"PHOTON\"",
+						"new_cluster:",
+						"  autoscale:",
+						"    min_workers: 5",
+						"    max_workers: 15",
+						"  spark_conf:",
+						"    spark.sql.shuffle.partitions: \"auto\"",
+						"  runtime_engine: \"PHOTON\"",
 					),
 				},
 			},
@@ -406,12 +407,12 @@ var Keywords = map[string]Keyword{
 			{
 				insertText: fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 					"new_cluster:",
-					"      autoscale:",
-					"        min_workers: 5",
-					"        max_workers: 15",
-					"      spark_conf:",
-					"        spark.sql.shuffle.partitions: \"auto\"",
-					"      runtime_engine: \"PHOTON\"",
+					"  autoscale:",
+					"    min_workers: 5",
+					"    max_workers: 15",
+					"  spark_conf:",
+					"    spark.sql.shuffle.partitions: \"auto\"",
+					"  runtime_engine: \"PHOTON\"",
 				),
 				kind:   lsp.CompletionItemKind["Snippet"],
 				detail: "new job cluster (suggested settings)",
@@ -420,12 +421,12 @@ var Keywords = map[string]Keyword{
 					Value: fmt.Sprintf("---\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 						"Snippet for declare new job cluster",
 						"new_cluster:",
-						"      autoscale:",
-						"        min_workers: 5",
-						"        max_workers: 15",
-						"      spark_conf:",
-						"        spark.sql.shuffle.partitions: \"auto\"",
-						"      runtime_engine: \"PHOTON\"",
+						"  autoscale:",
+						"    min_workers: 5",
+						"    max_workers: 15",
+						"  spark_conf:",
+						"    spark.sql.shuffle.partitions: \"auto\"",
+						"  runtime_engine: \"PHOTON\"",
 					),
 				},
 			},
@@ -440,7 +441,7 @@ var Keywords = map[string]Keyword{
 			{
 				insertText: fmt.Sprintf("%s\n%s\n",
 					"docker_image:",
-					"        url: \"ecs-url\"",
+					"  url: \"ecs-url\"",
 				),
 				kind:   lsp.CompletionItemKind["Snippet"],
 				detail: "docker image url",
@@ -449,7 +450,7 @@ var Keywords = map[string]Keyword{
 					Value: fmt.Sprintf("---\n%s\n\n%s\n%s\n",
 						"Snippet for declare docker image url",
 						"docker_image:",
-						"        url: \"ecs-url\"",
+						"  url: \"ecs-url\"",
 					),
 				},
 			},
@@ -509,7 +510,7 @@ func hammingRatio(input, keyword string) float32 {
 	return (float32(compareLength) - float32(dist)) / float32(compareLength)
 }
 
-func complete(word, _ string) []lsp.CompletionItem {
+func complete(word, leading string) []lsp.CompletionItem {
 	options := []lsp.CompletionItem{}
 	for kw, completions := range Keywords {
 		if hammingRatio(word, kw) >= 0.75 {
@@ -519,7 +520,7 @@ func complete(word, _ string) []lsp.CompletionItem {
 					Kind:          completion.kind,
 					Detail:        completion.detail,
 					Documentation: completion.documentation,
-					InsertText:    completion.insertText,
+					InsertText:    strings.ReplaceAll(completion.insertText, "\n", "\n"+leading),
 				})
 			}
 		}
