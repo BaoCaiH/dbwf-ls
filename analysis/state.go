@@ -136,12 +136,12 @@ func (s *State) DocumentFormatting(id int, uri string, opts lsp.FormattingOption
 	document := s.Documents[uri]
 
 	// Note: No need to do tabs for yaml, apparently. But I wrote it so I'm keeping it
-	// tabs := strings.Repeat(" ", opts.TabSize*2)
+	tabs := strings.Repeat(" ", opts.TabSize)
 	trimTrailingWhitespace, trimFinalNewlines := true, true
-	// insertSpace, trimTrailingWhitespace, trimFinalNewlines := true, true, true
-	// if opts.InsertSpaces != nil {
-	// 	insertSpace = *opts.InsertSpaces
-	// }
+	insertSpace, trimTrailingWhitespace, trimFinalNewlines := true, true, true
+	if opts.InsertSpaces != nil {
+		insertSpace = *opts.InsertSpaces
+	}
 	if opts.TrimTrailingWhitespace != nil {
 		trimTrailingWhitespace = *opts.TrimTrailingWhitespace
 	}
@@ -181,11 +181,11 @@ func (s *State) DocumentFormatting(id int, uri string, opts lsp.FormattingOption
 		logger.Printf("Formatting Regexp Compile %s", err)
 		return lsp.DocumentFormattingResponse{}, err
 	}
-	// reTab, err := regexp.Compile("\\t")
-	// if err != nil {
-	// 	logger.Printf("Formatting Regexp Compile %s", err)
-	// 	return lsp.DocumentFormattingResponse{}, err
-	// }
+	reTab, err := regexp.Compile("\\t")
+	if err != nil {
+		logger.Printf("Formatting Regexp Compile %s", err)
+		return lsp.DocumentFormattingResponse{}, err
+	}
 	for row, line := range strings.Split(document, "\n") {
 		loc := re.FindStringIndex(line)
 		if loc != nil && trimTrailingWhitespace {
@@ -194,16 +194,16 @@ func (s *State) DocumentFormatting(id int, uri string, opts lsp.FormattingOption
 				NewText: "",
 			})
 		}
-		// locs := reTab.FindAllStringIndex(line, -1)
-		// if locs != nil && insertSpace {
-		// 	logger.Print("Found some open tabs")
-		// 	for _, loc := range locs {
-		// 		edits = append(edits, lsp.TextEdit{
-		// 			Range:   lsp.LineRange(row, loc[0], loc[1]),
-		// 			NewText: tabs,
-		// 		})
-		// 	}
-		// }
+		locs := reTab.FindAllStringIndex(line, -1)
+		if locs != nil && insertSpace {
+			logger.Print("Found some open tabs")
+			for _, loc := range locs {
+				edits = append(edits, lsp.TextEdit{
+					Range:   lsp.LineRange(row, loc[0], loc[1]),
+					NewText: tabs,
+				})
+			}
+		}
 	}
 
 	// Formatting response
@@ -223,18 +223,17 @@ func (s *State) Completion(id int, uri string, position lsp.Position, logger *lo
 
 	items := []lsp.CompletionItem{}
 	line := strings.Split(document, "\n")[position.Line]
-	logger.Print(line, position)
 	word, err := wordAtCursor(line, position, logger)
-	logger.Print(word)
 	if err != nil {
 		return lsp.CompletionResponse{}, err
 	}
-	logger.Print(word)
-	items = append(items, lsp.CompletionItem{
-		Label:         word,
-		Detail:        "Current typing word",
-		Documentation: "Nothing to document here",
-	})
+
+	leading, err := leadingSpaces(line, logger)
+	if err != nil {
+		return lsp.CompletionResponse{}, err
+	}
+
+	items = append(items, complete(word, leading)...)
 
 	// Completion response
 	response := lsp.CompletionResponse{

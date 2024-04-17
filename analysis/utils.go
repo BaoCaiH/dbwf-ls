@@ -44,3 +44,13 @@ func wordAtCursor(line string, position lsp.Position, logger *log.Logger) (strin
 
 	return line[start:end], nil
 }
+
+func leadingSpaces(line string, logger *log.Logger) (string, error) {
+	re, err := regexp.Compile("^\\s*")
+	if err != nil {
+		logger.Panicf("Regexp Compile %s", err)
+		return "", err
+	}
+
+	return re.FindString(line), nil
+}
