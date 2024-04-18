@@ -15,80 +15,38 @@ func NewState() State {
 	return State{Documents: map[string]string{}}
 }
 
-func diagnose(document string) []lsp.Diagnostics {
-	diagnostics := []lsp.Diagnostics{}
-	foundHealth := false
-	for _, line := range strings.Split(document, "\n") {
-		matched, err := regexp.MatchString("^health:\\s*?/??/??.*?$", line)
-		if err != nil {
-			return diagnostics
-		}
-		if matched {
-			foundHealth = true
-		}
-	}
-
-	if !foundHealth {
-		diagnostics = append(diagnostics, lsp.Diagnostics{
-			Range:    lsp.LineRange(0, 0, 0),
-			Severity: 2,
-			Source:   "dbwf-ls",
-			Message:  "Please consider adding `health` check to workflows.",
-		})
-	}
-
-	return diagnostics
-}
-
-func (s *State) OpenDocument(uri, text string) []lsp.Diagnostics {
+func (s *State) OpenDocument(uri, text string) lsp.PublishDiagnosticsNotification {
 	s.Documents[uri] = text
 
-	return diagnose(s.Documents[uri])
+	diagnostics := diagnose(s.Documents[uri])
+
+	return lsp.PublishDiagnosticsNotification{
+		Notification: lsp.Notification{
+			RPC:    "2.0",
+			Method: "textDocument/publishDiagnostics",
+		},
+		Params: lsp.PublishDiagnosticsParams{
+			URI:         uri,
+			Diagnostics: diagnostics,
+		},
+	}
 }
 
-func (s *State) UpdateDocument(uri, text string) []lsp.Diagnostics {
+func (s *State) UpdateDocument(uri, text string) lsp.PublishDiagnosticsNotification {
 	s.Documents[uri] = text
 
-	return diagnose(s.Documents[uri])
-}
+	diagnostics := diagnose(s.Documents[uri])
 
-func wordAtCursor(line string, position lsp.Position, logger *log.Logger) (string, error) {
-	re, err := regexp.Compile("\\W")
-	if err != nil {
-		logger.Printf("Regexp Compile %s", err)
-		return "", err
+	return lsp.PublishDiagnosticsNotification{
+		Notification: lsp.Notification{
+			RPC:    "2.0",
+			Method: "textDocument/publishDiagnostics",
+		},
+		Params: lsp.PublishDiagnosticsParams{
+			URI:         uri,
+			Diagnostics: diagnostics,
+		},
 	}
-
-	// Because the flocking cursor is 1 step ahead of the line while typing
-	// So this can fail, quietly, damn.
-	char := position.Character
-	if char == len(line) {
-		char--
-	}
-
-	if loc := re.FindStringIndex(line[char : char+1]); loc != nil {
-		return "", nil
-	}
-
-	start, end := 0, 0
-	if locs := re.FindAllStringIndex(line, -1); locs != nil {
-		for _, loc := range locs {
-			if loc[0] > position.Character {
-				end = loc[0]
-			}
-			if loc[1] <= position.Character {
-				start = loc[1]
-			}
-			if end != 0 {
-				break
-			}
-		}
-	}
-	if end == 0 {
-		end = len(line)
-	}
-
-	return line[start:end], nil
 }
 
 func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Logger) (lsp.HoverResponse, error) {
@@ -159,9 +117,7 @@ func (s *State) CodeAction(id int, uri string, logger *log.Logger) (lsp.CodeActi
 				Title: "Remove trailing whitespaces",
 				Edit:  &lsp.WorkspaceEdit{Changes: dropTrailingWhitespacesEdit},
 			})
-
 		}
-
 	}
 
 	// Code Action response
@@ -180,12 +136,12 @@ func (s *State) DocumentFormatting(id int, uri string, opts lsp.FormattingOption
 	document := s.Documents[uri]
 
 	// Note: No need to do tabs for yaml, apparently. But I wrote it so I'm keeping it
-	// tabs := strings.Repeat(" ", opts.TabSize*2)
+	tabs := strings.Repeat(" ", opts.TabSize)
 	trimTrailingWhitespace, trimFinalNewlines := true, true
-	// insertSpace, trimTrailingWhitespace, trimFinalNewlines := true, true, true
-	// if opts.InsertSpaces != nil {
-	// 	insertSpace = *opts.InsertSpaces
-	// }
+	insertSpace, trimTrailingWhitespace, trimFinalNewlines := true, true, true
+	if opts.InsertSpaces != nil {
+		insertSpace = *opts.InsertSpaces
+	}
 	if opts.TrimTrailingWhitespace != nil {
 		trimTrailingWhitespace = *opts.TrimTrailingWhitespace
 	}
@@ -225,11 +181,11 @@ func (s *State) DocumentFormatting(id int, uri string, opts lsp.FormattingOption
 		logger.Printf("Formatting Regexp Compile %s", err)
 		return lsp.DocumentFormattingResponse{}, err
 	}
-	// reTab, err := regexp.Compile("\\t")
-	// if err != nil {
-	// 	logger.Printf("Formatting Regexp Compile %s", err)
-	// 	return lsp.DocumentFormattingResponse{}, err
-	// }
+	reTab, err := regexp.Compile("\\t")
+	if err != nil {
+		logger.Printf("Formatting Regexp Compile %s", err)
+		return lsp.DocumentFormattingResponse{}, err
+	}
 	for row, line := range strings.Split(document, "\n") {
 		loc := re.FindStringIndex(line)
 		if loc != nil && trimTrailingWhitespace {
@@ -238,16 +194,16 @@ func (s *State) DocumentFormatting(id int, uri string, opts lsp.FormattingOption
 				NewText: "",
 			})
 		}
-		// locs := reTab.FindAllStringIndex(line, -1)
-		// if locs != nil && insertSpace {
-		// 	logger.Print("Found some open tabs")
-		// 	for _, loc := range locs {
-		// 		edits = append(edits, lsp.TextEdit{
-		// 			Range:   lsp.LineRange(row, loc[0], loc[1]),
-		// 			NewText: tabs,
-		// 		})
-		// 	}
-		// }
+		locs := reTab.FindAllStringIndex(line, -1)
+		if locs != nil && insertSpace {
+			logger.Print("Found some open tabs")
+			for _, loc := range locs {
+				edits = append(edits, lsp.TextEdit{
+					Range:   lsp.LineRange(row, loc[0], loc[1]),
+					NewText: tabs,
+				})
+			}
+		}
 	}
 
 	// Formatting response
@@ -267,18 +223,17 @@ func (s *State) Completion(id int, uri string, position lsp.Position, logger *lo
 
 	items := []lsp.CompletionItem{}
 	line := strings.Split(document, "\n")[position.Line]
-	logger.Print(line, position)
 	word, err := wordAtCursor(line, position, logger)
-	logger.Print(word)
 	if err != nil {
 		return lsp.CompletionResponse{}, err
 	}
-	logger.Print(word)
-	items = append(items, lsp.CompletionItem{
-		Label:         word,
-		Detail:        "Current typing word",
-		Documentation: "Nothing to document here",
-	})
+
+	leading, err := leadingSpaces(line, logger)
+	if err != nil {
+		return lsp.CompletionResponse{}, err
+	}
+
+	items = append(items, complete(word, leading)...)
 
 	// Completion response
 	response := lsp.CompletionResponse{
