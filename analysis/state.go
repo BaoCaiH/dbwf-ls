@@ -59,6 +59,16 @@ func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Log
 		return lsp.HoverResponse{}, err
 	}
 
+	content := lsp.MarkupContent{}
+	if Keywords[word].hover == content {
+		content = lsp.MarkupContent{
+			Kind:  "plaintext",
+			Value: word,
+		}
+	} else {
+		content = Keywords[word].hover
+	}
+
 	// Hover response
 	response := lsp.HoverResponse{
 		Response: lsp.Response{
@@ -66,7 +76,7 @@ func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Log
 			ID:  &id,
 		},
 		Result: lsp.HoverResult{
-			Contents: word,
+			Contents: content,
 		},
 	}
 
