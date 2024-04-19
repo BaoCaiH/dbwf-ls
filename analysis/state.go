@@ -63,7 +63,7 @@ func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Log
 	if Keywords[word].hover == content {
 		content = lsp.MarkupContent{
 			Kind:  "plaintext",
-			Value: word,
+			Value: "No information available",
 		}
 	} else {
 		content = Keywords[word].hover

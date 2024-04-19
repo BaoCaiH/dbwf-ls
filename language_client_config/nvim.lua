@@ -15,7 +15,7 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewfile" }, {
 		if not client_dbwf then
 			client_dbwf = vim.lsp.start_client {
 				name = "dbwf-ls",
-				cmd = { "/Users/bao.cai/Kite/personal/dbwf-ls/main" },
+				cmd = { vim.fn.expand("$HOME/.config/dbwf-ls/main") },
 				on_attach = require "custom.plugins.init"["on_attach"]
 			}
 

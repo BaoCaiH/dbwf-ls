@@ -14,7 +14,13 @@ import (
 )
 
 func main() {
-	logger := getLogger("/Users/bao.cai/Kite/personal/dbwf-ls/log.txt")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal("[dbwf-ls] HOME NOT SET???")
+		log.Fatal(err)
+		panic(err)
+	}
+	logger := getLogger(home + "/.config/dbwf-ls/log.txt")
 	logger.Println("Here comes the crescendo!!")
 	sc := bufio.NewScanner(os.Stdin)
 	sc.Split(jsonrpc.Split)
