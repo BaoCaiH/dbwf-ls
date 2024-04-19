@@ -63,7 +63,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			logger.Printf("textDocument/didOpen %s", err)
 			return
 		}
-		notification := state.OpenDocument(noti.Params.TextDocument.URI, noti.Params.TextDocument.Text)
+		notification := state.OpenDocument(noti.Params.TextDocument.URI, noti.Params.TextDocument.Text, logger)
 		logger.Printf("Editing %s", noti.Params.TextDocument.URI)
 		writeResponse(writer, notification)
 		logger.Print("Diagnostics sent")
@@ -77,7 +77,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 		notification := lsp.PublishDiagnosticsNotification{}
 
 		for _, change := range noti.Params.ContentChanges {
-			notification = state.UpdateDocument(noti.Params.TextDocument.URI, change.Text)
+			notification = state.UpdateDocument(noti.Params.TextDocument.URI, change.Text, logger)
 		}
 		logger.Printf("Updated %s", noti.Params.TextDocument.URI)
 		writeResponse(writer, notification)

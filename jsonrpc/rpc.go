@@ -42,7 +42,6 @@ func DecodeMessage(msg []byte) (string, []byte, error) {
 	return baseMessage.Method, content[:contentLength], nil
 }
 
-// type SplitFunc func(data []byte, atEOF bool) (advance int, token []byte, err error)
 func Split(data []byte, _ bool) (advance int, token []byte, err error) {
 	header, content, found := bytes.Cut(data, []byte{'\r', '\n', '\r', '\n'})
 	if !found {

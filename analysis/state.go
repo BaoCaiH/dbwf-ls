@@ -15,10 +15,10 @@ func NewState() State {
 	return State{Documents: map[string]string{}}
 }
 
-func (s *State) OpenDocument(uri, text string) lsp.PublishDiagnosticsNotification {
+func (s *State) OpenDocument(uri, text string, logger *log.Logger) lsp.PublishDiagnosticsNotification {
 	s.Documents[uri] = text
 
-	diagnostics := diagnose(s.Documents[uri])
+	diagnostics := diagnose(s.Documents[uri], logger)
 
 	return lsp.PublishDiagnosticsNotification{
 		Notification: lsp.Notification{
@@ -32,10 +32,10 @@ func (s *State) OpenDocument(uri, text string) lsp.PublishDiagnosticsNotificatio
 	}
 }
 
-func (s *State) UpdateDocument(uri, text string) lsp.PublishDiagnosticsNotification {
+func (s *State) UpdateDocument(uri, text string, logger *log.Logger) lsp.PublishDiagnosticsNotification {
 	s.Documents[uri] = text
 
-	diagnostics := diagnose(s.Documents[uri])
+	diagnostics := diagnose(s.Documents[uri], logger)
 
 	return lsp.PublishDiagnosticsNotification{
 		Notification: lsp.Notification{
