@@ -28,10 +28,8 @@ func diagnose(document string, logger *log.Logger) []lsp.Diagnostics {
 		}
 	}
 	foundJobClusterChunk := false
-	jobClusters := map[string]struct {
-		defined, lastReferred lsp.Range
-	}{}
-	re, err := regexp.Compile("^\\s*job_cluster_key:\\s*\"?(\\w*)\"?\\s*/?/?.*$")
+	jobClusters := map[string]definition{}
+	re, err := regexp.Compile("^.*job_cluster_key:\\s*\"?(\\w*)\"?\\s*/?/?.*$")
 	if err != nil {
 		logger.Println(err)
 		return diagnostics
@@ -82,18 +80,12 @@ func diagnose(document string, logger *log.Logger) []lsp.Diagnostics {
 			}
 			current := jobClusters[matches[1]]
 			if isNewCluster {
-				jobClusters[matches[1]] = struct {
-					defined      lsp.Range
-					lastReferred lsp.Range
-				}{
+				jobClusters[matches[1]] = definition{
 					defined:      lsp.LineRange(i, matchIndex[2], matchIndex[3]),
 					lastReferred: current.lastReferred,
 				}
 			} else {
-				jobClusters[matches[1]] = struct {
-					defined      lsp.Range
-					lastReferred lsp.Range
-				}{
+				jobClusters[matches[1]] = definition{
 					defined:      current.defined,
 					lastReferred: lsp.LineRange(i, matchIndex[2], matchIndex[3]),
 				}

@@ -83,8 +83,21 @@ func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Log
 	return response, nil
 }
 
-func (s *State) Definition(id int, uri string, position lsp.Position) lsp.DefinitionResponse {
-	// document := s.Documents[uri]
+func (s *State) Definition(id int, uri string, position lsp.Position, logger *log.Logger) lsp.DefinitionResponse {
+	document := s.Documents[uri]
+
+	lines := strings.Split(document, "\n")
+
+	item_name, err := wordAtCursor(lines[position.Line], position, logger)
+	if err != nil {
+		logger.Println(err)
+		return lsp.DefinitionResponse{}
+	}
+	item := findDefinition(document, item_name, logger)
+
+	if item.defined == lsp.LineRange(0, 0, 0) {
+		return lsp.DefinitionResponse{}
+	}
 
 	// Definition response
 	response := lsp.DefinitionResponse{
@@ -93,11 +106,8 @@ func (s *State) Definition(id int, uri string, position lsp.Position) lsp.Defini
 			ID:  &id,
 		},
 		Result: lsp.Location{
-			URI: uri,
-			Range: lsp.Range{
-				Start: lsp.Position{Line: position.Line - 1, Character: 0},
-				End:   lsp.Position{Line: position.Line - 1, Character: 0},
-			},
+			URI:   uri,
+			Range: item.defined,
 		},
 	}
 
