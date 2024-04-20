@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"dbwf-ls/lsp"
+	"errors"
 	"log"
 	"regexp"
 	"strings"
@@ -83,20 +84,28 @@ func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Log
 	return response, nil
 }
 
-func (s *State) Definition(id int, uri string, position lsp.Position, logger *log.Logger) lsp.DefinitionResponse {
+func (s *State) Definition(id int, uri string, position lsp.Position, logger *log.Logger) (lsp.DefinitionResponse, error) {
 	document := s.Documents[uri]
-
 	lines := strings.Split(document, "\n")
-
 	item_name, err := wordAtCursor(lines[position.Line], position, logger)
 	if err != nil {
-		logger.Println(err)
-		return lsp.DefinitionResponse{}
+		return lsp.DefinitionResponse{}, err
 	}
+	if item_name == "" {
+		return lsp.DefinitionResponse{}, errors.New("Not a word")
+	}
+	matched, err := regexp.MatchString("job_cluster_key:|task_key:", lines[position.Line])
+	if err != nil {
+		return lsp.DefinitionResponse{}, err
+	}
+	if !matched {
+		return lsp.DefinitionResponse{}, errors.New("Not task or cluster")
+	}
+
 	item := findDefinition(document, item_name, logger)
 
 	if item.defined == lsp.LineRange(0, 0, 0) {
-		return lsp.DefinitionResponse{}
+		return lsp.DefinitionResponse{}, errors.New("Not defined")
 	}
 
 	// Definition response
@@ -111,7 +120,7 @@ func (s *State) Definition(id int, uri string, position lsp.Position, logger *lo
 		},
 	}
 
-	return response
+	return response, nil
 }
 
 func (s *State) CodeAction(id int, uri string, logger *log.Logger) (lsp.CodeActionResponse, error) {

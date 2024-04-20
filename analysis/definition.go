@@ -14,7 +14,7 @@ type definition struct {
 
 func findDefinition(document, item_name string, logger *log.Logger) definition {
 	item := definition{}
-	re, err := regexp.Compile(fmt.Sprintf("^.*[job_cluster_key|task_key]:\\s*\"?(%s)\"?\\s*/?/?.*$", item_name))
+	re, err := regexp.Compile(fmt.Sprintf("^[\\s-]*(job_cluster_key|task_key):\\s*\"?(%s)\"?\\s*#*.*$", item_name))
 	if err != nil {
 		logger.Println(err)
 		return item
@@ -25,30 +25,30 @@ func findDefinition(document, item_name string, logger *log.Logger) definition {
 
 	for i, line := range lines {
 		matches := re.FindStringSubmatch(line)
-		if matches != nil && len(matches) >= 2 {
+		if matches != nil && len(matches) >= 3 {
 			matchIndex := re.FindStringSubmatchIndex(line)
 			var isNewCluster bool
 			if i == documentLength-1 {
 				isNewCluster = false
 			} else {
-				isNewCluster, err = regexp.MatchString("^\\s*new_cluster:\\s*/?/?.*$", lines[i+1])
+				isNewCluster, err = regexp.MatchString("^.*new_cluster:\\s*#*.*$", lines[i+1])
 				if err != nil {
 					logger.Println(err)
 					return item
 				}
 			}
-			var isTaskRefer bool
-			if i == 0 {
-				isTaskRefer = false
+			var isTaskDefinition bool
+			if i == documentLength-1 {
+				isTaskDefinition = false
 			} else {
-				isTaskRefer, err = regexp.MatchString("^\\s*depends_on:\\s*/?/?.*$", lines[i-1])
+				isTaskDefinition, err = regexp.MatchString("^.*description:\\s*#*.*$", lines[i+1])
 				if err != nil {
 					logger.Println(err)
 					return item
 				}
 			}
-			if isNewCluster || !isTaskRefer {
-				item.defined = lsp.LineRange(i, matchIndex[2], matchIndex[3])
+			if isNewCluster || isTaskDefinition {
+				item.defined = lsp.LineRange(i, matchIndex[4], matchIndex[5])
 			}
 		}
 	}

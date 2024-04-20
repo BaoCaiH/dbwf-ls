@@ -116,9 +116,12 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 		}
 
 		// Definition response
-		response := state.Definition(request.ID, request.Params.TextDocument.URI, request.Params.Position, logger)
-
-		writeResponse(writer, response)
+		response, err := state.Definition(request.ID, request.Params.TextDocument.URI, request.Params.Position, logger)
+		if err != nil {
+			logger.Println(err)
+		} else {
+			writeResponse(writer, response)
+		}
 		logger.Print("Definition response sent")
 	case "textDocument/codeAction":
 		var request lsp.CodeActionRequest
