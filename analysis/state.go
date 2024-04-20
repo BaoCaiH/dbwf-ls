@@ -16,6 +16,10 @@ func NewState() State {
 	return State{Documents: map[string]string{}}
 }
 
+// Handler for when document opened
+// It simply add the full document to the current state
+// and provide diagnostics
+// For task diagnostics, it needs a `description` right below the `task_key` to be discovered
 func (s *State) OpenDocument(uri, text string, logger *log.Logger) lsp.PublishDiagnosticsNotification {
 	s.Documents[uri] = text
 
@@ -33,6 +37,10 @@ func (s *State) OpenDocument(uri, text string, logger *log.Logger) lsp.PublishDi
 	}
 }
 
+// Handler for when document changed
+// It also add the full document to the current state
+// and provide diagnostics
+// For task diagnostics, it needs a `description` right below the `task_key` to be discovered
 func (s *State) UpdateDocument(uri, text string, logger *log.Logger) lsp.PublishDiagnosticsNotification {
 	s.Documents[uri] = text
 
@@ -50,6 +58,8 @@ func (s *State) UpdateDocument(uri, text string, logger *log.Logger) lsp.Publish
 	}
 }
 
+// Handler for hover request
+// Selected keywords in `Keywords` are filled with documentations from databricks
 func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Logger) (lsp.HoverResponse, error) {
 	document := s.Documents[uri]
 
@@ -84,6 +94,9 @@ func (s *State) Hover(id int, uri string, position lsp.Position, logger *log.Log
 	return response, nil
 }
 
+// Handler for go to definition request
+// Parse the document and find where a task or a cluster is defined
+// For task, it needs a `description` right below the `task_key` to be discovered
 func (s *State) Definition(id int, uri string, position lsp.Position, logger *log.Logger) (lsp.DefinitionResponse, error) {
 	document := s.Documents[uri]
 	lines := strings.Split(document, "\n")
@@ -123,6 +136,8 @@ func (s *State) Definition(id int, uri string, position lsp.Position, logger *lo
 	return response, nil
 }
 
+// Handler for code action request
+// For now it does the same thing as the simplest format
 func (s *State) CodeAction(id int, uri string, logger *log.Logger) (lsp.CodeActionResponse, error) {
 	document := s.Documents[uri]
 
@@ -161,6 +176,8 @@ func (s *State) CodeAction(id int, uri string, logger *log.Logger) (lsp.CodeActi
 	return response, nil
 }
 
+// Handler for format request
+// It can insert spaces, trim whitespaces and trailing new lines
 func (s *State) DocumentFormatting(id int, uri string, opts lsp.FormattingOptions, logger *log.Logger) (lsp.DocumentFormattingResponse, error) {
 	document := s.Documents[uri]
 
@@ -247,6 +264,8 @@ func (s *State) DocumentFormatting(id int, uri string, opts lsp.FormattingOption
 	return response, nil
 }
 
+// Handler for completion request
+// Selected keywords in `Keywords` are filled with examples
 func (s *State) Completion(id int, uri string, position lsp.Position, logger *log.Logger) (lsp.CompletionResponse, error) {
 	document := s.Documents[uri]
 

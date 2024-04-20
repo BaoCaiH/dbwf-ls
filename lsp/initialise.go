@@ -55,7 +55,7 @@ func NewInitialiseResponse(id int) InitialiseResponse {
 			},
 			ServerInfo: ServerInfo{
 				Name:    "dbwf-ls",
-				Version: "timonthy",
+				Version: "timonthy", // the dinosaur, rawr
 			},
 		},
 	}

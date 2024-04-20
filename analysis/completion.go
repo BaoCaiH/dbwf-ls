@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// Simple score to match with current word user is typing
 func hammingRatio(input, keyword string) float32 {
 	compareLength := len(input)
 	if len(input) > len(keyword) {
@@ -21,6 +22,7 @@ func hammingRatio(input, keyword string) float32 {
 	return (float32(compareLength) - float32(dist)) / float32(compareLength)
 }
 
+// Simple completion. Return a bunch of presets in `Keywords`
 func complete(word, leading string) []lsp.CompletionItem {
 	options := []lsp.CompletionItem{}
 	for kw, completions := range Keywords {

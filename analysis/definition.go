@@ -12,6 +12,9 @@ type definition struct {
 	defined, lastReferred lsp.Range
 }
 
+// Parse the location of the task or cluster definition
+// Cluster expecting a new_cluster and task expecting a description to identify definition
+// Could have done better with yaml to json parsing, but oh well
 func findDefinition(document, item_name string, logger *log.Logger) definition {
 	item := definition{}
 	re, err := regexp.Compile(fmt.Sprintf("^[\\s-]*(job_cluster_key|task_key):\\s*\"?(%s)\"?\\s*#*.*$", item_name))

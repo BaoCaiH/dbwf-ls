@@ -73,6 +73,7 @@ type Diag struct {
 	severity int
 }
 
+// A whole lot of keywords
 var Keywords = map[string]Keyword{
 	"name": {
 		hover: lsp.MarkupContent{

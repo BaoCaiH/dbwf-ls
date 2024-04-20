@@ -16,6 +16,9 @@ type requiredKeys struct {
 	found bool
 }
 
+// Kind of simple diagnose
+// Some keywords are either required or should have
+// If some tasks or clusters were referenced but not defined, it will also emit errors
 func diagnose(document string, logger *log.Logger) []lsp.Diagnostics {
 	diagnostics := []lsp.Diagnostics{}
 	required_keywords := map[string]requiredKeys{}

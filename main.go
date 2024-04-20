@@ -13,6 +13,7 @@ import (
 	"os"
 )
 
+// DBWF-LS
 func main() {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -39,11 +40,13 @@ func main() {
 	}
 }
 
+// Write a given response to the client
 func writeResponse(writer io.Writer, msg any) {
 	reply, _ := jsonrpc.EncodeMessage(msg)
 	writer.Write([]byte(reply))
 }
 
+// Handle incoming messages
 func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, method string, contents []byte) {
 	logger.Printf("Received msg with method: %s", method)
 
@@ -201,6 +204,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 	}
 }
 
+// Get a standard file log
 func getLogger(filename string) *log.Logger {
 	logfile, err := os.OpenFile(filename, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
