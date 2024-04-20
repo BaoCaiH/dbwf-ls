@@ -5,17 +5,6 @@ import (
 	"strings"
 )
 
-type Keyword struct {
-	hover       lsp.MarkupContent
-	completions []Completion
-}
-
-type Completion struct {
-	insertText, detail string
-	kind               int
-	documentation      lsp.MarkupContent
-}
-
 func hammingRatio(input, keyword string) float32 {
 	compareLength := len(input)
 	if len(input) > len(keyword) {

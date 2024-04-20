@@ -56,6 +56,23 @@ func leadingSpaces(line string, logger *log.Logger) (string, error) {
 	return re.FindString(line), nil
 }
 
+type Keyword struct {
+	hover       lsp.MarkupContent
+	diag        Diag
+	completions []Completion
+}
+
+type Completion struct {
+	insertText, detail string
+	kind               int
+	documentation      lsp.MarkupContent
+}
+
+type Diag struct {
+	help     string
+	severity int
+}
+
 var Keywords = map[string]Keyword{
 	"name": {
 		hover: lsp.MarkupContent{
@@ -67,6 +84,10 @@ var Keywords = map[string]Keyword{
 				"An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.",
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#name)",
 			),
+		},
+		diag: Diag{
+			help:     "`name` is missing. Hint: start by typing `name`",
+			severity: 2,
 		},
 		completions: []Completion{
 			{
@@ -113,6 +134,10 @@ var Keywords = map[string]Keyword{
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#description)",
 			),
 		},
+		diag: Diag{
+			help:     "`description` is missing. Hint: start by typing `description`",
+			severity: 4,
+		},
 		completions: []Completion{
 			{
 				insertText: fmt.Sprintf("%s\n", "description: \"Meaningful description\""),
@@ -141,6 +166,10 @@ var Keywords = map[string]Keyword{
 				"An optional set of email addresses that is notified when runs of this job begin or complete as well as when this job is deleted.",
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#email_notifications)",
 			),
+		},
+		diag: Diag{
+			help:     "`email_notifications` is missing. Hint: start by typing `email`",
+			severity: 2,
 		},
 		completions: []Completion{
 			{
@@ -226,6 +255,10 @@ var Keywords = map[string]Keyword{
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#notification_settings)",
 			),
 		},
+		diag: Diag{
+			help:     "`notification_settings` is missing. Hint: start by typing `noti`",
+			severity: 4,
+		},
 		completions: []Completion{
 			{
 				insertText: fmt.Sprintf("%s\n%s\n%s\n",
@@ -262,6 +295,10 @@ var Keywords = map[string]Keyword{
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#timeout_seconds)",
 			),
 		},
+		diag: Diag{
+			help:     "`timeout_seconds` is missing. Hint: start by typing `timeout`",
+			severity: 2,
+		},
 		completions: []Completion{
 			{
 				insertText: fmt.Sprintf("%s\n", "timeout_seconds: 0"),
@@ -297,6 +334,10 @@ var Keywords = map[string]Keyword{
 				"```",
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#health)",
 			),
+		},
+		diag: Diag{
+			help:     "`health` is missing. Hint: start by typing `health`",
+			severity: 2,
 		},
 		completions: []Completion{
 			{
@@ -342,6 +383,10 @@ var Keywords = map[string]Keyword{
 				"```",
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#schedule)",
 			),
+		},
+		diag: Diag{
+			help:     "`schedule` is missing. Hint: start by typing `schedule`",
+			severity: 2,
 		},
 		completions: []Completion{
 			{
@@ -403,6 +448,10 @@ var Keywords = map[string]Keyword{
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#max_concurrent_runs)",
 			),
 		},
+		diag: Diag{
+			help:     "`max_concurrent_runs` is missing. Hint: start by typing `max`",
+			severity: 4,
+		},
 		completions: []Completion{
 			{
 				insertText: fmt.Sprintf("%s\n", "max_concurrent_runs: 1"),
@@ -441,6 +490,10 @@ var Keywords = map[string]Keyword{
 				"A list of task specifications to be executed by this job.",
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#tasks)",
 			),
+		},
+		diag: Diag{
+			help:     "`tasks` is missing. Hint: start by typing `task`",
+			severity: 1,
 		},
 		completions: []Completion{
 			{
@@ -500,13 +553,11 @@ var Keywords = map[string]Keyword{
 				},
 			},
 			{
-				insertText: fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+				insertText: fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 					"- task_key: \"task_name\"",
 					"  description: \"task description\"",
 					"  existing_cluster_id: \"some_cluster_id\"",
 					"  <task type declaration>",
-					"  parameters:",
-					"    - \"param-key=param-value\"",
 					"  depends_on:",
 					"    - task_key: \"some_task_key\"",
 					"  run_if: \"ALL_SUCCESS\"",
@@ -515,27 +566,23 @@ var Keywords = map[string]Keyword{
 				detail: "single task (existing cluster)",
 				documentation: lsp.MarkupContent{
 					Kind: "markdown",
-					Value: fmt.Sprintf("---\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+					Value: fmt.Sprintf("---\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 						"Snippet for declaring single task",
 						"- task_key: \"task_name\"",
 						"  description: \"task description\"",
 						"  existing_cluster_id: \"some_cluster_id\"",
 						"  <task type declaration>",
-						"  parameters:",
-						"    - \"param-key=param-value\"",
 						"  depends_on:",
 						"    - task_key: \"some_task_key\"",
 						"  run_if: \"ALL_SUCCESS\"",
 					)},
 			},
 			{
-				insertText: fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+				insertText: fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 					"- task_key: \"task_name\"",
 					"  description: \"task description\"",
 					"  job_cluster_key: \"some_cluster_key\"",
 					"  <task type declaration>",
-					"  parameters:",
-					"    - \"param-key=param-value\"",
 					"  depends_on:",
 					"    - task_key: \"some_task_key\"",
 					"  run_if: \"ALL_SUCCESS\"",
@@ -544,14 +591,12 @@ var Keywords = map[string]Keyword{
 				detail: "single task (cluster key)",
 				documentation: lsp.MarkupContent{
 					Kind: "markdown",
-					Value: fmt.Sprintf("---\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+					Value: fmt.Sprintf("---\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 						"Snippet for declaring single task",
 						"- task_key: \"task_name\"",
 						"  description: \"task description\"",
 						"  job_cluster_key: \"some_cluster_key\"",
 						"  <task type declaration>",
-						"  parameters:",
-						"    - \"param-key=param-value\"",
 						"  depends_on:",
 						"    - task_key: \"some_task_key\"",
 						"  run_if: \"ALL_SUCCESS\"",
@@ -587,7 +632,7 @@ var Keywords = map[string]Keyword{
 					"    - \"param-key=param-value\"",
 				),
 				kind:   lsp.CompletionItemKind["Snippet"],
-				detail: "spark python task",
+				detail: "python wheel task",
 				documentation: lsp.MarkupContent{
 					Kind: "markdown",
 					Value: fmt.Sprintf("---\n%s\n\n%s\n%s\n%s\n%s\n%s\n",
@@ -853,6 +898,10 @@ var Keywords = map[string]Keyword{
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#tags)",
 			),
 		},
+		diag: Diag{
+			help:     "`tags` is missing. Hint: start by typing `tags`",
+			severity: 2,
+		},
 		completions: []Completion{
 			{
 				insertText: fmt.Sprintf("%s\n%s\n",
@@ -965,6 +1014,10 @@ var Keywords = map[string]Keyword{
 				"```",
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#run_as)",
 			),
+		},
+		diag: Diag{
+			help:     "`run_as` is missing. Hint: start by typing `run_as`",
+			severity: 1,
 		},
 		completions: []Completion{
 			{
@@ -1116,6 +1169,10 @@ var Keywords = map[string]Keyword{
 				"List of permissions to set on the job.",
 				"[See more](https://docs.databricks.com/api/workspace/jobs/create#access_control_list)",
 			),
+		},
+		diag: Diag{
+			help:     "`access_control_list` is missing. Hint: start by typing `access`",
+			severity: 1,
 		},
 		completions: []Completion{
 			{
