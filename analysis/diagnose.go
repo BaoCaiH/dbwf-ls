@@ -27,14 +27,28 @@ func diagnose(document string, logger *log.Logger) []lsp.Diagnostics {
 			}
 		}
 	}
-	logger.Println(required_keywords)
-	for _, line := range strings.Split(document, "\n") {
+	foundJobClusterChunk := false
+	jobClusters := map[string]struct {
+		defined, lastReferred lsp.Range
+	}{}
+	re, err := regexp.Compile("^\\s*job_cluster_key:\\s*\"?(\\w*)\"?\\s*/?/?.*$")
+	if err != nil {
+		logger.Println(err)
+		return diagnostics
+	}
+
+	lines := strings.Split(document, "\n")
+	documentLength := len(lines)
+
+	for i, line := range lines {
+		// required match
 		for k, v := range required_keywords {
 			if v.found {
 				continue
 			}
-			matched, err := regexp.MatchString(fmt.Sprintf("^%s:\\s*?/??/??.*?$", k), line)
+			matched, err := regexp.MatchString(fmt.Sprintf("^%s:\\s*/?/?.*$", k), line)
 			if err != nil {
+				logger.Println(err)
 				return diagnostics
 			}
 			if matched {
@@ -42,9 +56,51 @@ func diagnose(document string, logger *log.Logger) []lsp.Diagnostics {
 				required_keywords[k] = v
 			}
 		}
+		// conditional match
+		if !foundJobClusterChunk {
+			matched, err := regexp.MatchString("^job_clusters:\\s*/?/?.*$", line)
+			if err != nil {
+				logger.Println(err)
+				return diagnostics
+			}
+			if matched {
+				foundJobClusterChunk = true
+			}
+		}
+		matches := re.FindStringSubmatch(line)
+		if matches != nil && len(matches) >= 2 {
+			matchIndex := re.FindStringSubmatchIndex(line)
+			var isNewCluster bool
+			if i == documentLength-1 {
+				isNewCluster = false
+			} else {
+				isNewCluster, err = regexp.MatchString("^\\s*new_cluster:\\s*/?/?.*$", lines[i+1])
+				if err != nil {
+					logger.Println(err)
+					return diagnostics
+				}
+			}
+			current := jobClusters[matches[1]]
+			if isNewCluster {
+				jobClusters[matches[1]] = struct {
+					defined      lsp.Range
+					lastReferred lsp.Range
+				}{
+					defined:      lsp.LineRange(i, matchIndex[2], matchIndex[3]),
+					lastReferred: current.lastReferred,
+				}
+			} else {
+				jobClusters[matches[1]] = struct {
+					defined      lsp.Range
+					lastReferred lsp.Range
+				}{
+					defined:      current.defined,
+					lastReferred: lsp.LineRange(i, matchIndex[2], matchIndex[3]),
+				}
+			}
+		}
 	}
 
-	documentLength := len(strings.Split(document, "\n"))
 	for _, v := range required_keywords {
 		if !v.found {
 			diagnostics = append(diagnostics, lsp.Diagnostics{
@@ -53,6 +109,33 @@ func diagnose(document string, logger *log.Logger) []lsp.Diagnostics {
 				Source:   "dbwf-ls",
 				Message:  v.help,
 			})
+		}
+	}
+
+	if len(jobClusters) > 0 && !foundJobClusterChunk {
+		diagnostics = append(diagnostics, lsp.Diagnostics{
+			Range:    lsp.LineRange(documentLength-1, 0, 0),
+			Severity: 1,
+			Source:   "dbwf-ls",
+			Message:  "`job_cluster_key` is declared on task but no `job_clusters` chunk found. Hint: start by typing `cluster`",
+		})
+	} else {
+		for k, v := range jobClusters {
+			if v.defined != lsp.LineRange(0, 0, 0) && v.lastReferred == lsp.LineRange(0, 0, 0) {
+				diagnostics = append(diagnostics, lsp.Diagnostics{
+					Range:    v.defined,
+					Severity: 2,
+					Source:   "dbwf-ls",
+					Message:  fmt.Sprintf("`%s` is declared but not used anywhere.", k),
+				})
+			} else if v.defined == lsp.LineRange(0, 0, 0) && v.lastReferred != lsp.LineRange(0, 0, 0) {
+				diagnostics = append(diagnostics, lsp.Diagnostics{
+					Range:    v.lastReferred,
+					Severity: 1,
+					Source:   "dbwf-ls",
+					Message:  fmt.Sprintf("`%s` is not declared but not used in at least 1 task.", k),
+				})
+			}
 		}
 	}
 
