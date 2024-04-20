@@ -906,7 +906,7 @@ var Keywords = map[string]Keyword{
 			{
 				insertText: fmt.Sprintf("%s\n%s\n",
 					"tags:",
-					"    tag-key: \"tag-value\"",
+					"  tag-key: \"tag-value\"",
 				),
 				kind:   lsp.CompletionItemKind["Snippet"],
 				detail: "workflow tags",
@@ -915,7 +915,7 @@ var Keywords = map[string]Keyword{
 					Value: fmt.Sprintf("---\n%s\n\n%s\n%s\n",
 						"Snippet for declare workflow tags",
 						"tags:",
-						"    tag-key: \"tag-value\"",
+						"  tag-key: \"tag-value\"",
 					),
 				},
 			},
